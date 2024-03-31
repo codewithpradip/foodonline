@@ -3,9 +3,11 @@ from .forms import UserForm
 from .models import User, UserProfile
 from django.contrib import messages, auth
 from vendor.forms import VendorForm
-from .utils import detectUser
+from .utils import detectUser, send_email_verification
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
+from django.utils.http import urlsafe_base64_decode
+from django.contrib.auth.tokens import default_token_generator
 
 # Restrict the vendor from accessing the customer page 
 def check_role_vendor(user):
@@ -38,6 +40,7 @@ def registerUser(request):
             user = User.objects.create_user(first_name=first_name, last_name=last_name, username=username, email=email, password=password)
             user.role = User.CUSTOMER
             user.save()
+            send_email_verification( request, user)
             messages.success(request, 'Your account has been registered successfully!')
             return redirect('registerUser')
 
@@ -83,6 +86,27 @@ def registerVendor(request):
         'v_from' : v_form
     }
     return render(request, 'accounts/registerVender.html', context)
+
+
+def activate(request, uid64, token):
+    # Activate the user by setting the is_active status True
+    try:
+        uid = urlsafe_base64_decode(uid64).decode()
+        user = User._default_manager.get(pk=uid)
+
+    except(TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    
+    if user is not None and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        messages.success(request, 'Congratulation your account is acticated.')
+        return redirect('myAccount')
+    else: 
+        messages.error(request, 'Invalid activation link')
+        return redirect('myAccount')
+
+
 
 def login(request):
     if request.user.is_authenticated:
