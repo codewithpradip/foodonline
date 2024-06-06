@@ -31,3 +31,10 @@ def send_email_verification(request, user, mail_subject, email_template):
     to_email = user.email
     mail = EmailMessage(mail_subject, message, from_email, to=[to_email])
     mail.send()
+
+def send_natification(mail_subject, mail_template, context):
+    from_email = settings.EMAIL_HOST_USER
+    message = render_to_string(mail_template, context)
+    to_email = context['user'].email
+    mail = EmailMessage(mail_subject, message, from_email, to=[to_email])
+    mail.send()
